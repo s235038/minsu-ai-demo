@@ -136,6 +136,7 @@ aside details{border-top:1px solid var(--line)}
             </div>
             <label>房型<input id="room" maxlength="60" placeholder="例如四人房"></label>
             <label>特殊需求<textarea id="needs" maxlength="300" placeholder="例如需要車位，請使用虛構資料"></textarea></label>
+            <p id="request-feedback" class="feedback" role="status"></p>
             <button type="button" id="summary" class="primary">產生需求摘要</button>
           </div>
         </details>
@@ -427,6 +428,7 @@ function respondToInquiry(text, hasFaq) {
 
   intake.active = true;
   if (validDate(parsed.date)) el("sample-date")?.remove();
+  clearRequestError();
   Object.assign(intake.draft, parsed);
   for (const [id, value] of Object.entries(intake.draft)) el(id).value = value;
   const missing = missingField(intake.draft);
@@ -643,18 +645,46 @@ function showSummary(record) {
   chat.scrollTop = chat.scrollHeight;
 }
 
+const requestFeedback = el("request-feedback");
+const requestErrors = {
+  date: "請填寫有效的入住日期。",
+  nights: "晚數須為 1 至 30 的整數。",
+  adults: "大人人數須為 1 至 30 的整數。",
+  children: "小孩人數須為 0 至 30 的整數。",
+};
+let invalidRequestField;
+
+function clearRequestError() {
+  if (!invalidRequestField) return;
+  invalidRequestField.removeAttribute("aria-invalid");
+  invalidRequestField.removeAttribute("aria-describedby");
+  invalidRequestField = undefined;
+  requestFeedback.textContent = "";
+}
+
+el("request-details").addEventListener("input", event => {
+  if (event.target === invalidRequestField) clearRequestError();
+});
+
 el("summary").onclick = () => {
   const record = Object.fromEntries(
     Object.keys(emptyDraft()).map(id => [id, el(id).value.trim()])
   );
-  if (missingField(record)) {
-    bubble("請先填寫有效日期、晚數與人數。");
-  } else {
-    el("sample-date")?.remove();
-    showSummary(record);
-    intake.active = false;
-    intake.draft = emptyDraft();
+  clearRequestError();
+  const missing = missingField(record);
+  if (missing) {
+    invalidRequestField = el(missing);
+    invalidRequestField.setAttribute("aria-invalid", "true");
+    invalidRequestField.setAttribute("aria-describedby", requestFeedback.id);
+    requestFeedback.textContent = requestErrors[missing];
+    invalidRequestField.focus();
+    return;
   }
+
+  el("sample-date")?.remove();
+  showSummary(record);
+  intake.active = false;
+  intake.draft = emptyDraft();
   chat.focus();
 };
 </script>

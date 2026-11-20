@@ -426,7 +426,9 @@ function intakeFields(text) {
   const fields = {};
   if (dates.length) fields.date = uniqueInquiryValue(dates);
 
-  const amount = String.raw`([+\-−]?\s*[\d零一二兩三四五六七八九十]+(?:[.,][\d零一二兩三四五六七八九十]+)?)`;
+  const number = String.raw`[+\-−]?\s*[\d零一二兩三四五六七八九十]+(?:[.,][\d零一二兩三四五六七八九十]+)?`;
+  const alternative = String.raw`\s*(?:或(?:者)?|到|至|[-~–—、/])\s*`;
+  const amount = "(" + number + "(?:" + alternative + number + ")*)";
   for (const [field, units] of [
     ["nights", "晚(?!上)|夜"],
     ["adults", "(?:位|個|名)?\\s*(?:大人|成人)"],

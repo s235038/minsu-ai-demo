@@ -9,7 +9,8 @@ async function openDemo(page) {
 }
 
 async function openEditor(page) {
-  await page.getByText('老闆管理區').click();
+  await page.getByRole('button', { name: '老闆管理區' }).click();
+  await page.getByText('編輯 FAQ 答案').click();
   return page.getByLabel('寵物', { exact: true });
 }
 
@@ -60,9 +61,11 @@ test('all 36 answers are editable, persist after reload and reset', async ({ pag
   await page.reload();
   petAnswer = await openEditor(page);
   await expect(petAnswer).toHaveValue('虛構測試：寵物請先確認。');
+  await page.getByRole('button', { name: '旅客接待' }).click();
   await input(page).fill('帶狗嗎？');
   await submit(page).click();
   await expect(messages(page).last()).toContainText('虛構測試');
+  await page.getByRole('button', { name: '老闆管理區' }).click();
   await page.getByRole('button', { name: '恢復示範資料' }).click();
   await expect(petAnswer).toHaveValue('攜帶寵物與清潔費請向業者確認');
   await page.reload();
@@ -89,9 +92,11 @@ test('blocked storage still allows edits in the current tab', async ({ page }) =
   await (await openEditor(page)).fill('虛構測試答案');
   await page.getByRole('button', { name: '儲存問答' }).click();
   await expect(page.getByRole('status')).toContainText('無法永久儲存');
+  await page.getByRole('button', { name: '旅客接待' }).click();
   await input(page).fill('帶狗嗎？');
   await submit(page).click();
   await expect(messages(page).last()).toContainText('虛構測試答案');
+  await page.getByRole('button', { name: '老闆管理區' }).click();
   await page.getByRole('button', { name: '恢復示範資料' }).click();
   await expect(page.getByRole('status')).toContainText('已恢復示範資料');
 });

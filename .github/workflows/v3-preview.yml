@@ -8,6 +8,7 @@ on:
       - 'tests/**'
       - 'package*.json'
       - 'playwright.config.cjs'
+      - 'docs/v4-trial-guide.md'
       - '.github/workflows/v3-preview.yml'
 permissions:
   contents: read
@@ -27,7 +28,10 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: hospitality-demo-html
-          path: minsu_ai_v3.html
+          path: |
+            minsu_ai_v3.html
+            docs/v4-trial-guide.md
+          if-no-files-found: error
   deploy-preview:
     if: github.event_name == 'push' && github.ref == 'refs/heads/fix/v3-mvp-demo'
     needs: test

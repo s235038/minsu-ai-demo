@@ -1,4 +1,5 @@
 name: V3 automated checks and preview deploy
+# Re-trigger deployment after repository Pages source was configured
 on:
   push:
     branches: [feature/v3-smart-reception-20261120]

@@ -80,3 +80,32 @@ test('asks for explicit data and does not truncate out-of-range quantities', asy
   await send(page, '兩位大人');
   await expect(latest(page)).toContainText('大人：2 人');
 });
+
+test('manual summary identifies the first invalid field and lets the guest correct it', async ({ page }) => {
+  await page.goto('/minsu_ai_v3.html');
+  await page.getByText('訂房需求整理').click();
+  const date = page.getByLabel('入住日期');
+  const nights = page.getByLabel('晚數');
+  const generate = page.getByRole('button', { name: '產生需求摘要' });
+  const feedback = page.locator('#request-feedback');
+
+  await nights.fill('31');
+  await generate.click();
+  await expect(date).toBeFocused();
+  await expect(date).toHaveAttribute('aria-invalid', 'true');
+  await expect(date).toHaveAccessibleDescription('請填寫有效的入住日期。');
+  await expect(page.getByRole('button', { name: '送至示範後台' })).toHaveCount(0);
+
+  await date.fill('2027-02-06');
+  await expect(feedback).toBeEmpty();
+  await expect(date).not.toHaveAttribute('aria-invalid', 'true');
+  await generate.click();
+  await expect(nights).toBeFocused();
+  await expect(nights).toHaveAccessibleDescription('晚數須為 1 至 30 的整數。');
+
+  await nights.fill('2');
+  await generate.click();
+  await expect(feedback).toBeEmpty();
+  await expect(latest(page)).toContainText('晚數：2');
+  await expect(page.getByRole('log')).toBeFocused();
+});

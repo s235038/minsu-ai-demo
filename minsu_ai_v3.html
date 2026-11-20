@@ -653,9 +653,18 @@ function showSummary(record) {
   };
 
   handoff.onclick = () => {
-    const id = Array.from(crypto.getRandomValues(new Uint32Array(4))).join("-");
-    cases.unshift({ ...record, id, status: "new", source: "本機諮詢" });
-    handoffFeedback.textContent = saveCases() ? "已加入此瀏覽器的示範後台，待業者確認。" : "已加入本頁的後台，重新整理後可能遺失。";
+    const alreadyQueued = cases.some(item =>
+      item.source === "本機諮詢" && item.status !== "done" &&
+      item.date === record.date && item.room === record.room && item.needs === record.needs &&
+      ["nights", "adults", "children"].every(field => Number(item[field]) === Number(record[field]))
+    );
+    if (alreadyQueued) {
+      handoffFeedback.textContent = "相同需求已在待處理清單中。";
+    } else {
+      const id = Array.from(crypto.getRandomValues(new Uint32Array(4))).join("-");
+      cases.unshift({ ...record, id, status: "new", source: "本機諮詢" });
+      handoffFeedback.textContent = saveCases() ? "已加入此瀏覽器的示範後台，待業者確認。" : "已加入本頁的後台，重新整理後可能遺失。";
+    }
     handoff.textContent = "查看後台";
     handoff.onclick = () => switchView(true);
     chat.scrollTop = chat.scrollHeight;

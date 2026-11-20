@@ -133,3 +133,23 @@ test('accepts bare numbers only while a quantity is requested', async ({ page })
   await send(page, '2');
   await expect(latest(page)).toContainText('目前沒有足夠資料');
 });
+
+test('asks for one date and rejects signed, fractional or conflicting quantities', async ({ page }) => {
+  await page.goto('/minsu_ai_v3.html');
+  await send(page, '2027-02-06 或 2027-02-07，住 2.5 晚，2 位大人或 3 位大人，家庭房');
+  await expect(latest(page)).toContainText('請提供完整日期');
+  await send(page, '2027-02-30');
+  await expect(latest(page)).toContainText('請提供完整日期');
+  await send(page, '２０２７年２月６日');
+  await expect(latest(page)).toContainText('預計住幾晚');
+  await send(page, '住 −2 晚');
+  await expect(latest(page)).toContainText('預計住幾晚');
+  await send(page, '住兩晚');
+  await expect(latest(page)).toContainText('幾位大人');
+  await send(page, '三十一位大人');
+  await expect(latest(page)).toContainText('幾位大人');
+  await send(page, '十一位大人');
+  await expect(latest(page)).toContainText('晚數：2');
+  await expect(latest(page)).toContainText('大人：11 人');
+  await expect(latest(page)).toContainText('家庭房');
+});

@@ -7,11 +7,12 @@ test('exports a branded HTML demo with edited answers and no guest activity', as
   await question.fill('匯出時不應包含這段測試聊天');
   await question.press('Enter');
   await page.getByText('訂房需求整理').click();
-  await page.getByLabel('入住日期').fill('2027-02-01');
+  await page.getByLabel('入住日期').fill('2028-09-17');
   await page.getByLabel('特殊需求').fill('匯出時不應包含這段測試需求');
   await page.getByRole('button', { name: '產生需求摘要' }).click();
 
   await page.getByText('老闆管理區').click();
+  await page.getByText('編輯 FAQ 答案').click();
   const name = '虛構海風旅宿';
   const answer = '虛構車位示範 </script><img src=x onerror="window.exportInjected=true">';
   await page.getByLabel('展示旅宿名稱').fill(name);
@@ -23,7 +24,7 @@ test('exports a branded HTML demo with edited answers and no guest activity', as
   expect(download.suggestedFilename()).toBe('minsu-trial.html');
   const html = readFileSync(await download.path(), 'utf8');
   expect(html).not.toContain('匯出時不應包含');
-  expect(html).not.toContain('2027-02-01');
+  expect(html).not.toContain('2028-09-17');
 
   const guest = await browser.newPage();
   try {
@@ -46,6 +47,7 @@ test('exports a branded HTML demo with edited answers and no guest activity', as
     await expect(reply).toContainText('【早餐】');
     expect(await guest.evaluate(() => window.exportInjected)).toBeUndefined();
     await guest.getByText('老闆管理區').click();
+    await guest.getByText('編輯 FAQ 答案').click();
     await expect(guest.locator('#editor textarea')).toHaveCount(36);
     await guest.getByRole('button', { name: '恢復示範資料' }).click();
     await expect(guest.getByLabel('停車', { exact: true })).toHaveValue(answer);
@@ -57,6 +59,7 @@ test('exports a branded HTML demo with edited answers and no guest activity', as
 test('asks the operator to fill a blank answer before download', async ({ page }) => {
   await page.goto('/minsu_ai_v3.html');
   await page.getByText('老闆管理區').click();
+  await page.getByText('編輯 FAQ 答案').click();
   const parking = page.getByLabel('停車', { exact: true });
   await parking.fill('   ');
   await page.getByRole('button', { name: '下載客製展示 HTML' }).click();

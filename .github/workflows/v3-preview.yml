@@ -26,7 +26,7 @@ jobs:
       - run: npm test
       - uses: actions/upload-artifact@v7
         with:
-          name: v3-demo
+          name: hospitality-demo-html
           path: minsu_ai_v3.html
   deploy-preview:
     if: github.event_name == 'push' && github.ref == 'refs/heads/fix/v3-mvp-demo'

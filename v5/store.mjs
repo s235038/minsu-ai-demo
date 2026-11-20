@@ -93,8 +93,12 @@ export function createStore(filename) {
       ) STRICT;
       COMMIT;
     `);
+    // Legacy databases have no event creation timestamp; do not guess their age.
+    if (!db.prepare('PRAGMA table_info(events)').all().some(row => row.name === 'created_at')) {
+      db.exec('ALTER TABLE events ADD COLUMN created_at INTEGER');
+    }
 
-    const claim = db.prepare('INSERT INTO events (id) VALUES (?) ON CONFLICT(id) DO NOTHING');
+    const claim = db.prepare('INSERT INTO events (id, created_at) VALUES (?, ?) ON CONFLICT(id) DO NOTHING');
     const decide = db.prepare('UPDATE events SET decided = 1 WHERE id = ? AND decided = 0 AND outcome IS NULL');
     const finish = db.prepare('UPDATE events SET outcome = ?, reason = ?, delivery = ? WHERE id = ? AND outcome IS NULL');
     const readState = db.prepare('SELECT state FROM conversations WHERE id = ? AND expires_at > ?');
@@ -112,6 +116,9 @@ export function createStore(filename) {
     const readInquiries = db.prepare('SELECT * FROM inquiries ORDER BY created_at DESC, rowid DESC LIMIT 100');
     const changeStatus = db.prepare('UPDATE inquiries SET status = ?, updated_at = ? WHERE id = ? RETURNING *');
     const eraseInquiry = db.prepare('DELETE FROM inquiries WHERE id = ?');
+    const purgeResolved = db.prepare("DELETE FROM inquiries WHERE status = 'resolved' AND updated_at < ?");
+    const purgeEvents = db.prepare('DELETE FROM events WHERE created_at IS NOT NULL AND created_at < ? AND outcome IS NOT NULL AND NOT EXISTS (SELECT 1 FROM inquiries WHERE inquiries.event_id = events.id)');
+    const purgeStates = db.prepare('DELETE FROM conversations WHERE expires_at <= ?');
     const readKnowledge = db.prepare('SELECT document FROM knowledge WHERE singleton = 1');
     const writeKnowledge = db.prepare(`
       INSERT INTO knowledge (singleton, document) VALUES (1, ?)
@@ -143,7 +150,7 @@ export function createStore(filename) {
     return {
       claimEvent(id) {
         requireKey(id);
-        return claim.run(id).changes === 1;
+        return claim.run(id, Date.now()).changes === 1;
       },
       commitDecision(id, key, state, inquiry) {
         requireKey(id);
@@ -183,6 +190,24 @@ export function createStore(filename) {
       },
       deleteInquiry(id) {
         return eraseInquiry.run(id).changes === 1;
+      },
+      pruneRetention({ now = Date.now(), resolvedDays = 30, eventDays = 30 } = {}) {
+        if (!Number.isSafeInteger(now) || now < 0 || !Number.isSafeInteger(resolvedDays)
+            || resolvedDays < 1 || resolvedDays > 3650 || !Number.isSafeInteger(eventDays)
+            || eventDays < 1 || eventDays > 3650) throw new TypeError('Invalid retention settings');
+        const resolvedCutoff = now - resolvedDays * 86400000;
+        const eventCutoff = now - eventDays * 86400000;
+        db.exec('BEGIN IMMEDIATE');
+        try {
+          const conversations = purgeStates.run(now).changes;
+          const inquiries = purgeResolved.run(resolvedCutoff).changes;
+          const events = purgeEvents.run(eventCutoff).changes;
+          db.exec('COMMIT');
+          return { conversations, inquiries, events };
+        } catch (error) {
+          db.exec('ROLLBACK');
+          throw error;
+        }
       },
       getKnowledge() {
         const row = readKnowledge.get();

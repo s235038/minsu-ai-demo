@@ -383,31 +383,47 @@ function missingField(record) {
 }
 
 const questions = {
-  date: "請問哪一天入住？請提供完整日期，例如 2027-02-01。",
+  date: "請問哪一天入住？請提供完整日期，例如 2027-02-01；每次請選一個日期。",
   nights: "預計住幾晚？可直接回覆數字，例如「2」。",
   adults: "請問有幾位大人？可直接回覆數字，例如「2」，也可以一併填寫小孩人數。",
   children: "請問有幾位小孩？沒有的話可直接回覆「0」。",
 };
 
+function parseInquiryCount(amount) {
+  const value = amount.trim().replaceAll("兩", "二");
+  if (/^\d+$/.test(value)) return value;
+  const digits = "零一二三四五六七八九";
+  if (value.length === 1 && digits.includes(value)) return String(digits.indexOf(value));
+  const tens = value.match(/^([一二三四五六七八九]?)十([一二三四五六七八九]?)$/);
+  if (!tens) return "";
+  return String((tens[1] ? digits.indexOf(tens[1]) : 1) * 10 + (tens[2] ? digits.indexOf(tens[2]) : 0));
+}
+
+function uniqueInquiryValue(values) {
+  const distinct = new Set(values);
+  return distinct.size === 1 ? values[0] : "";
+}
+
 function intakeFields(text) {
   const normalized = text.normalize("NFKC");
-  const match = normalized.match(/\b(\d{4})\s*[-/.年]\s*(\d{1,2})\s*[-/.月]\s*(\d{1,2})(?!\d)/);
+  const dates = Array.from(
+    normalized.matchAll(/\b(\d{4})\s*[-/.年]\s*(\d{1,2})\s*[-/.月]\s*(\d{1,2})(?!\d)/g),
+    ([, year, month, day]) => [year, month.padStart(2, "0"), day.padStart(2, "0")].join("-")
+  );
   const fields = {};
-  if (match) {
-    fields.date = [match[1], match[2].padStart(2, "0"), match[3].padStart(2, "0")].join("-");
-  }
+  if (dates.length) fields.date = uniqueInquiryValue(dates);
 
-  const digits = "零一二三四五六七八九";
-  for (const [field, pattern] of [
-    ["nights", /([\d零一二兩三四五六七八九十]+)\s*(?:晚|夜)/],
-    ["adults", /([\d零一二兩三四五六七八九十]+)\s*(?:位|個|名)?\s*(?:大人|成人)/],
-    ["children", /([\d零一二兩三四五六七八九十]+)\s*(?:位|個|名)?\s*(?:小孩|兒童|孩子)/],
+  const amount = String.raw`([+\-−]?\s*[\d零一二兩三四五六七八九十]+(?:[.,][\d零一二兩三四五六七八九十]+)?)`;
+  for (const [field, units] of [
+    ["nights", "晚(?!上)|夜"],
+    ["adults", "(?:位|個|名)?\\s*(?:大人|成人)"],
+    ["children", "(?:位|個|名)?\\s*(?:小孩|兒童|孩子)"],
   ]) {
-    const amount = normalized.match(pattern)?.[1];
-    if (amount && /^\d+$/.test(amount)) fields[field] = amount;
-    else if (amount === "兩") fields[field] = "2";
-    else if (amount === "十") fields[field] = "10";
-    else if (amount?.length === 1) fields[field] = String(digits.indexOf(amount));
+    const matches = Array.from(
+      normalized.matchAll(new RegExp(amount + "\\s*(?:" + units + ")", "g")),
+      ([, matched]) => parseInquiryCount(matched)
+    );
+    if (matches.length) fields[field] = uniqueInquiryValue(matches);
   }
   if (fields.children === undefined && /(?:有|帶)(?:小孩|兒童|孩子)/.test(text)) {
     fields.children = "";
@@ -421,7 +437,7 @@ function intakeFields(text) {
 
 function respondToInquiry(text, hasFaq) {
   const parsed = intakeFields(text);
-  const startsInquiry = parsed.date || parsed.nights || parsed.adults ||
+  const startsInquiry = ["date", "nights", "adults"].some(field => Object.hasOwn(parsed, field)) ||
     /(?:想|要|詢問|請問)(?:要)?(?:訂房|住宿)|住宿諮詢/.test(text);
   if (!intake.active && !startsInquiry) return false;
   if (hasFaq && !startsInquiry && !Object.keys(parsed).length) return true;

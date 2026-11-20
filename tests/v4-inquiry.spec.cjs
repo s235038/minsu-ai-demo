@@ -153,3 +153,43 @@ test('asks for one date and rejects signed, fractional or conflicting quantities
   await expect(latest(page)).toContainText('大人：11 人');
   await expect(latest(page)).toContainText('家庭房');
 });
+
+test('keeps repeated handoffs in one queue entry on a narrow screen', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 700 });
+  await page.goto('/minsu_ai_v3.html');
+  await page.getByText('訂房需求整理').click();
+  await page.getByLabel('入住日期').fill('2027-02-06');
+  const generate = page.getByRole('button', { name: '產生需求摘要' });
+  await generate.click();
+  await latest(page).getByRole('button', { name: '送至示範後台' }).click();
+  await page.getByLabel('晚數').fill('01');
+  await generate.click();
+  await latest(page).getByRole('button', { name: '送至示範後台' }).click();
+  await expect(latest(page)).toContainText('相同需求已在待處理清單中');
+  await latest(page).getByRole('button', { name: '查看後台' }).click();
+  const cases = page.getByRole('article');
+  await expect(cases).toHaveCount(1);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
+
+  await cases.getByLabel('處理狀態').selectOption('done');
+  await guest(page).click();
+  await generate.click();
+  await latest(page).getByRole('button', { name: '送至示範後台' }).click();
+  await owner(page).click();
+  await expect(cases).toHaveCount(2);
+  await expect(page.locator('#count-new')).toHaveText('1');
+  await expect(page.locator('#count-done')).toHaveText('1');
+});
+
+test('renders HTML-like visitor input as text in the summary and operator queue', async ({ page }) => {
+  await page.goto('/minsu_ai_v3.html');
+  const markup = '<b data-demo-marker="html">試用</b>';
+  await send(page, markup);
+  await expect(latest(page)).toContainText('目前沒有足夠資料');
+  await send(page, '2027-02-06 住兩晚 2位大人。特殊需求：' + markup);
+  await expect(latest(page)).toContainText(markup);
+  await latest(page).getByRole('button', { name: '送至示範後台' }).click();
+  await latest(page).getByRole('button', { name: '查看後台' }).click();
+  await expect(page.getByRole('article')).toContainText(markup);
+  await expect(page.locator('[data-demo-marker]')).toHaveCount(0);
+});

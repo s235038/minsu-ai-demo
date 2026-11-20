@@ -1,8 +1,22 @@
-<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>台東好宿 V3</title><style>body{margin:0;background:#f4f6fa;font:16px -apple-system,sans-serif;color:#203044}.app{max-width:700px;margin:auto;min-height:100vh;background:white}header{background:#183a55;color:white;padding:22px}main,footer{padding:18px}.bubble{background:#eaf1f6;padding:14px;border-radius:15px;white-space:pre-wrap;margin:12px 0;line-height:1.6}.bubble{overflow-wrap:anywhere}#chat{max-height:55vh;max-height:55svh;overflow-y:auto}.summary-action{margin-top:10px}.summary-action textarea{display:block;margin-top:8px}.summary-action textarea[hidden]{display:none}.me{background:#d8eee4;margin-left:15%}footer{border-top:1px solid #ddd}.chips{display:flex;overflow-x:auto;gap:7px;margin-bottom:12px}button{min-height:44px;font:inherit;padding:10px 13px;border:1px solid #9ab0c3;border-radius:20px;background:white;flex-shrink:0}form{display:flex;gap:8px}input[type="date"]{appearance:none;-webkit-appearance:none;min-height:44px;background:white;color:inherit}input,textarea{box-sizing:border-box;width:100%;min-width:0;padding:12px;border:1px solid #bac6d0;border-radius:9px;font:inherit}form button,.primary{background:#183a55;color:white}details{background:#f0f4f7;padding:12px;margin-top:12px;border-radius:10px}label{display:block;margin:10px 0}textarea{min-height:65px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.note{font-size:12px;color:#627487}</style><div class="app"><header><b>🏡 台東好宿｜V3 智慧接待展示</b><p>虛構旅宿・規則式測試・不接受實際訂房</p></header><main id="chat" role="log" aria-label="聊天記錄" tabindex="0"><div class="bubble">您好！可以一次問多個問題，例如：帶狗可以嗎？有停車嗎？晚上入住可以嗎？</div></main><footer><div class="chips" id="chips"></div><form id="form"><input id="q" aria-label="旅客問題" enterkeyhint="send" placeholder="輸入旅客問題" maxlength="500"><button type="submit">送出</button></form><details><summary>📝 訂房需求整理</summary><div class="grid"><label>入住日期<input type="date" id="date"></label><label>晚數<input type="number" id="nights" min="1" value="1"></label><label>大人<input type="number" id="adults" min="1" value="2"></label><label>小孩<input type="number" id="children" min="0" value="0"></label></div><label>房型<input id="room" placeholder="例如四人房"></label><label>特殊需求<textarea id="needs"></textarea></label><button type="button" id="summary" class="primary">產生需求摘要</button><p class="note">不會送出訂單、查詢空房或收集資料。</p></details><details><summary>⚙️ 老闆管理區（無登入保護）</summary><p class="note">全是虛構資料，請勿輸入真實客戶資料。</p><div id="editor"></div><button id="save" type="button" class="primary">儲存問答</button><button id="reset" type="button">恢復示範資料</button><p id="status" role="status"></p></details><p class="note">本版不是生成式 AI；房價、空房、設施與政策請由業者確認。</p></footer></div><script>
-"use strict";const defaults=[{"q":"入住時間","keys":["入住","進房","check in"],"a":"示範入住為下午 3 點後；晚到請先確認"},{"q":"退房時間","keys":["退房","check out"],"a":"示範退房為上午 11 點前"},{"q":"停車","keys":["停車","車位"],"a":"車位數量及費用請向業者確認"},{"q":"早餐","keys":["早餐","早點"],"a":"供應及費用請向業者確認"},{"q":"寵物","keys":["寵物","帶狗","狗狗","貓"],"a":"攜帶寵物與清潔費請向業者確認"},{"q":"交通","keys":["交通","車站","接駁","火車"],"a":"接駁及交通請向業者確認"},{"q":"房型","keys":["房型","雙人房","四人房"],"a":"請提供人數供業者推薦房型"},{"q":"兒童","keys":["小孩","兒童","孩子"],"a":"兒童計價與年齡限制請向業者確認"},{"q":"加床","keys":["加床","加人"],"a":"加床費用及可行性請向業者確認"},{"q":"房價","keys":["房價","多少錢","價格","報價"],"a":"沒有即時房價，請提供日期人數向業者詢價"},{"q":"空房","keys":["空房","有房","還有房"],"a":"沒有連接空房系統，請由業者確認"},{"q":"訂房","keys":["訂房","預訂","保留房"],"a":"可整理需求，但本版不能保留房間"},{"q":"訂金","keys":["訂金","付款","刷卡"],"a":"付款方式及帳號以業者正式通知為準"},{"q":"取消","keys":["取消","退款","改期"],"a":"請依訂房條款向業者確認"},{"q":"颱風","keys":["颱風","豪雨","下雨"],"a":"天候相關改期請向業者確認"},{"q":"發票","keys":["發票","收據","統編"],"a":"開立方式請向業者確認"},{"q":"電梯","keys":["電梯","樓梯","輪椅"],"a":"無障礙及電梯設備請向業者確認"},{"q":"洗衣","keys":["洗衣","烘衣"],"a":"洗衣設備及費用請向業者確認"},{"q":"網路","keys":["wifi","網路"],"a":"網路設備請向業者確認"},{"q":"空調","keys":["冷氣","暖氣"],"a":"空調設備依房型向業者確認"},{"q":"浴室","keys":["浴缸","浴室","毛巾"],"a":"衛浴及備品請向業者確認"},{"q":"廚房","keys":["廚房","冰箱","微波爐"],"a":"料理設備請向業者確認"},{"q":"嬰兒床","keys":["嬰兒床","澡盆"],"a":"嬰兒用品請向業者確認"},{"q":"寄放行李","keys":["寄放","行李"],"a":"行李寄放請向業者確認"},{"q":"自助入住","keys":["自助入住","門禁","鑰匙"],"a":"入住方式由業者正式通知"},{"q":"證件","keys":["身分證","護照","證件"],"a":"請勿在展示頁輸入證件資料"},{"q":"吸菸","keys":["吸菸","抽菸"],"a":"吸菸規定請向業者確認"},{"q":"噪音","keys":["噪音","派對","唱歌"],"a":"安靜時段請向業者確認"},{"q":"景點","keys":["景點","行程","去哪玩"],"a":"景點資訊請另行查證"},{"q":"餐飲","keys":["餐廳","美食","宵夜"],"a":"營業時間請自行確認"},{"q":"超商","keys":["超商","便利商店"],"a":"附近商店請以地圖確認"},{"q":"租車","keys":["租車","機車","腳踏車"],"a":"租車合作請向業者確認"},{"q":"包棟","keys":["包棟","團體"],"a":"包棟費用請向業者確認"},{"q":"烤肉","keys":["烤肉","bbq"],"a":"烤肉規定請向業者確認"},{"q":"安全","keys":["消防","逃生","安全"],"a":"消防與緊急資訊請向業者確認"},{"q":"人工","keys":["真人","人工","老闆"],"a":"請使用業者正式聯絡管道"}],key="minsu-v3-faq";
+<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>台東好宿 V3</title><style>body{margin:0;background:#f4f6fa;font:16px -apple-system,sans-serif;color:#203044}.app{max-width:700px;margin:auto;min-height:100vh;background:white}header{background:#183a55;color:white;padding:22px}main,footer{padding:18px}.bubble{background:#eaf1f6;padding:14px;border-radius:15px;white-space:pre-wrap;margin:12px 0;line-height:1.6}.bubble{overflow-wrap:anywhere}#chat{max-height:55vh;max-height:55svh;overflow-y:auto}.summary-action{margin-top:10px}.summary-action textarea{display:block;margin-top:8px}.summary-action textarea[hidden]{display:none}.me{background:#d8eee4;margin-left:15%}footer{border-top:1px solid #ddd}.chips{display:flex;overflow-x:auto;gap:7px;margin-bottom:12px}button{min-height:44px;font:inherit;padding:10px 13px;border:1px solid #9ab0c3;border-radius:20px;background:white;flex-shrink:0}form{display:flex;gap:8px}input[type="date"]{appearance:none;-webkit-appearance:none;min-height:44px;background:white;color:inherit}input,textarea{box-sizing:border-box;width:100%;min-width:0;padding:12px;border:1px solid #bac6d0;border-radius:9px;font:inherit}form button,.primary{background:#183a55;color:white}details{background:#f0f4f7;padding:12px;margin-top:12px;border-radius:10px}label{display:block;margin:10px 0}textarea{min-height:65px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.note{font-size:12px;color:#627487}</style><div class="app"><header><b id="demo-title">🏡 台東好宿｜V3 智慧接待展示</b><p>虛構旅宿・規則式測試・不接受實際訂房</p></header><main id="chat" role="log" aria-label="聊天記錄" tabindex="0"><div class="bubble">您好！可以一次問多個問題，例如：帶狗可以嗎？有停車嗎？晚上入住可以嗎？</div></main><footer><div class="chips" id="chips"></div><form id="form"><input id="q" aria-label="旅客問題" enterkeyhint="send" placeholder="輸入旅客問題" maxlength="500"><button type="submit">送出</button></form><details><summary>📝 訂房需求整理</summary><div class="grid"><label>入住日期<input type="date" id="date"></label><label>晚數<input type="number" id="nights" min="1" value="1"></label><label>大人<input type="number" id="adults" min="1" value="2"></label><label>小孩<input type="number" id="children" min="0" value="0"></label></div><label>房型<input id="room" placeholder="例如四人房"></label><label>特殊需求<textarea id="needs"></textarea></label><button type="button" id="summary" class="primary">產生需求摘要</button><p class="note">不會送出訂單、查詢空房或收集資料。</p></details><details><summary>⚙️ 老闆管理區（無登入保護）</summary><p class="note">全是虛構資料，請勿輸入真實客戶資料。</p><div id="editor"></div><button id="save" type="button" class="primary">儲存問答</button><button id="reset" type="button">恢復示範資料</button><p id="status" role="status"></p><label>展示旅宿名稱<input id="trial-name" maxlength="60" placeholder="例如台東海風旅宿"></label><button type="button" id="export-trial">下載客製展示 HTML</button><p class="note">檔案會包含此處填寫的名稱與目前編輯的 36 則答案。請只填寫可公開的展示內容。</p></details><p class="note">本版不是生成式 AI；房價、空房、設施與政策請由業者確認。</p></footer></div><script id="trial-config" type="application/json">{}</script><script>
+"use strict";const standardFaq=[{"q":"入住時間","keys":["入住","進房","check in"],"a":"示範入住為下午 3 點後；晚到請先確認"},{"q":"退房時間","keys":["退房","check out"],"a":"示範退房為上午 11 點前"},{"q":"停車","keys":["停車","車位"],"a":"車位數量及費用請向業者確認"},{"q":"早餐","keys":["早餐","早點"],"a":"供應及費用請向業者確認"},{"q":"寵物","keys":["寵物","帶狗","狗狗","貓"],"a":"攜帶寵物與清潔費請向業者確認"},{"q":"交通","keys":["交通","車站","接駁","火車"],"a":"接駁及交通請向業者確認"},{"q":"房型","keys":["房型","雙人房","四人房"],"a":"請提供人數供業者推薦房型"},{"q":"兒童","keys":["小孩","兒童","孩子"],"a":"兒童計價與年齡限制請向業者確認"},{"q":"加床","keys":["加床","加人"],"a":"加床費用及可行性請向業者確認"},{"q":"房價","keys":["房價","多少錢","價格","報價"],"a":"沒有即時房價，請提供日期人數向業者詢價"},{"q":"空房","keys":["空房","有房","還有房"],"a":"沒有連接空房系統，請由業者確認"},{"q":"訂房","keys":["訂房","預訂","保留房"],"a":"可整理需求，但本版不能保留房間"},{"q":"訂金","keys":["訂金","付款","刷卡"],"a":"付款方式及帳號以業者正式通知為準"},{"q":"取消","keys":["取消","退款","改期"],"a":"請依訂房條款向業者確認"},{"q":"颱風","keys":["颱風","豪雨","下雨"],"a":"天候相關改期請向業者確認"},{"q":"發票","keys":["發票","收據","統編"],"a":"開立方式請向業者確認"},{"q":"電梯","keys":["電梯","樓梯","輪椅"],"a":"無障礙及電梯設備請向業者確認"},{"q":"洗衣","keys":["洗衣","烘衣"],"a":"洗衣設備及費用請向業者確認"},{"q":"網路","keys":["wifi","網路"],"a":"網路設備請向業者確認"},{"q":"空調","keys":["冷氣","暖氣"],"a":"空調設備依房型向業者確認"},{"q":"浴室","keys":["浴缸","浴室","毛巾"],"a":"衛浴及備品請向業者確認"},{"q":"廚房","keys":["廚房","冰箱","微波爐"],"a":"料理設備請向業者確認"},{"q":"嬰兒床","keys":["嬰兒床","澡盆"],"a":"嬰兒用品請向業者確認"},{"q":"寄放行李","keys":["寄放","行李"],"a":"行李寄放請向業者確認"},{"q":"自助入住","keys":["自助入住","門禁","鑰匙"],"a":"入住方式由業者正式通知"},{"q":"證件","keys":["身分證","護照","證件"],"a":"請勿在展示頁輸入證件資料"},{"q":"吸菸","keys":["吸菸","抽菸"],"a":"吸菸規定請向業者確認"},{"q":"噪音","keys":["噪音","派對","唱歌"],"a":"安靜時段請向業者確認"},{"q":"景點","keys":["景點","行程","去哪玩"],"a":"景點資訊請另行查證"},{"q":"餐飲","keys":["餐廳","美食","宵夜"],"a":"營業時間請自行確認"},{"q":"超商","keys":["超商","便利商店"],"a":"附近商店請以地圖確認"},{"q":"租車","keys":["租車","機車","腳踏車"],"a":"租車合作請向業者確認"},{"q":"包棟","keys":["包棟","團體"],"a":"包棟費用請向業者確認"},{"q":"烤肉","keys":["烤肉","bbq"],"a":"烤肉規定請向業者確認"},{"q":"安全","keys":["消防","逃生","安全"],"a":"消防與緊急資訊請向業者確認"},{"q":"人工","keys":["真人","人工","老闆"],"a":"請使用業者正式聯絡管道"}];
 const el = id => document.getElementById(id);
 const chat = el("chat");
 const input = el("q");
+const trialTemplate = document.documentElement.cloneNode(true);
+const trialName = el("trial-name");
+const trial = JSON.parse(el("trial-config").textContent);
+const defaults = standardFaq.map((item, i) => ({
+  ...item,
+  a: trial.answers?.[i] ?? item.a,
+}));
+const key = trial.id ? "minsu-v3-faq:" + trial.id : "minsu-v3-faq";
+
+if (trial.name) {
+  trialName.value = trial.name;
+  document.title = trial.name + "｜智慧接待展示";
+  el("demo-title").textContent = "🏡 " + document.title;
+}
 
 function loadFaq() {
   try {
@@ -84,15 +98,20 @@ const answerFields = faq.map(item => {
   return field;
 });
 
-el("save").onclick = () => {
+function readAnswers() {
   const answers = answerFields.map(field => field.value.trim());
   const empty = answers.indexOf("");
   if (empty !== -1) {
     el("status").textContent = "請填寫「" + faq[empty].q + "」的答案";
     answerFields[empty].focus();
-    return;
+    return null;
   }
+  return answers;
+}
 
+el("save").onclick = () => {
+  const answers = readAnswers();
+  if (!answers) return;
   faq = faq.map((item, i) => ({ ...item, a: answers[i] }));
   try {
     localStorage.setItem(key, JSON.stringify(faq));
@@ -110,6 +129,28 @@ el("reset").onclick = () => {
   } catch {
     el("status").textContent = "已恢復示範資料，重新整理後可能載入先前儲存的資料";
   }
+};
+
+el("export-trial").onclick = () => {
+  const answers = readAnswers();
+  if (!answers) return;
+  const name = trialName.value.trim().slice(0, 60);
+  const id = Array.from(crypto.getRandomValues(new Uint32Array(4))).join("-");
+  trialTemplate.querySelector("#trial-config").textContent =
+    JSON.stringify({ id, name, answers }).replaceAll("<", "\\u003c");
+
+  const file = new Blob(["<!doctype html>\n", trialTemplate.outerHTML], {
+    type: "text/html;charset=utf-8",
+  });
+  const url = URL.createObjectURL(file);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "minsu-trial.html";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
+  el("status").textContent = "已產生展示檔，可提供其他裝置開啟。";
 };
 
 function showSummary(text) {

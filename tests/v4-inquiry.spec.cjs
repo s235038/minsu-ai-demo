@@ -213,3 +213,16 @@ test('supports the operator walkthrough from a standalone HTML file', async ({ p
   await latest(page).getByRole('button', { name: '查看後台' }).click();
   await expect(page.getByRole('article')).toHaveCount(1);
 });
+
+test('asks for exact quantities when a range or choices share one unit', async ({ page }) => {
+  await page.goto('/minsu_ai_v3.html');
+  await send(page, '2027-02-06，住 2 或 3 晚，2 至 4 位大人');
+  await expect(latest(page)).toContainText('預計住幾晚');
+  await send(page, '2～3晚');
+  await expect(latest(page)).toContainText('預計住幾晚');
+  await send(page, '2');
+  await expect(latest(page)).toContainText('幾位大人');
+  await send(page, '3');
+  await expect(latest(page)).toContainText('晚數：2');
+  await expect(latest(page)).toContainText('大人：3 人');
+});

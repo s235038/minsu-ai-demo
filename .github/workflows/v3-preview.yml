@@ -1,7 +1,7 @@
-name: V3 automated checks and preview deploy
+name: Browser checks and Pages deployment
 on:
   push:
-    branches: [fix/v3-mvp-demo]
+    branches: [fix/v3-mvp-demo, publish/v4-github-pages]
   pull_request:
     paths:
       - 'minsu_ai_v3.html'
@@ -33,7 +33,7 @@ jobs:
             docs/v4-trial-guide.md
           if-no-files-found: error
   deploy-preview:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/fix/v3-mvp-demo'
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/fix/v3-mvp-demo' || github.ref == 'refs/heads/publish/v4-github-pages')
     needs: test
     runs-on: ubuntu-latest
     permissions:
@@ -46,7 +46,8 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v6
-      - run: |
+      - name: Build the public index.html
+        run: |
           mkdir -p _site
           cp minsu_ai_v3.html _site/
           cp minsu_ai_v3.html _site/index.html

@@ -109,3 +109,27 @@ test('manual summary identifies the first invalid field and lets the guest corre
   await expect(latest(page)).toContainText('晚數：2');
   await expect(page.getByRole('log')).toBeFocused();
 });
+
+test('accepts bare numbers only while a quantity is requested', async ({ page }) => {
+  await page.goto('/minsu_ai_v3.html');
+  await send(page, '2');
+  await expect(latest(page)).toContainText('目前沒有足夠資料');
+
+  await send(page, '想訂房，會帶小孩');
+  await send(page, '2');
+  await expect(latest(page)).toContainText('哪一天入住');
+  await send(page, '2027-02-06');
+  await expect(latest(page)).toContainText('預計住幾晚');
+  await send(page, '123');
+  await expect(latest(page)).toContainText('預計住幾晚');
+  await send(page, '２');
+  await expect(latest(page)).toContainText('幾位大人');
+  await send(page, '2');
+  await expect(latest(page)).toContainText('幾位小孩');
+  await send(page, '0');
+  await expect(latest(page)).toContainText('晚數：2');
+  await expect(latest(page)).toContainText('大人：2 人，小孩：0 人');
+
+  await send(page, '2');
+  await expect(latest(page)).toContainText('目前沒有足夠資料');
+});

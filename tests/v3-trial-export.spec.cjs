@@ -1,4 +1,5 @@
 const { readFileSync } = require('node:fs');
+const { pathToFileURL } = require('node:url');
 const { expect, test } = require('@playwright/test');
 
 test('exports a branded HTML demo with edited answers and no guest activity', async ({ page, browser }) => {
@@ -65,4 +66,28 @@ test('asks the operator to fill a blank answer before download', async ({ page }
   await page.getByRole('button', { name: '下載客製展示 HTML' }).click();
   await expect(page.getByRole('status')).toContainText('請填寫「停車」');
   await expect(parking).toBeFocused();
+});
+
+test('reopens the actual downloaded HTML offline', async ({ page, context }, testInfo) => {
+  await page.goto('/minsu_ai_v3.html');
+  await page.getByRole('button', { name: '老闆管理區' }).click();
+  await page.getByRole('textbox', { name: '展示旅宿名稱' }).fill('虛構離線旅宿');
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: '下載客製展示 HTML' }).click(),
+  ]);
+  const file = testInfo.outputPath('minsu-trial.html');
+  await download.saveAs(file);
+
+  await context.setOffline(true);
+  const reopened = await context.newPage();
+  await reopened.goto(pathToFileURL(file).href);
+  await expect(reopened).toHaveTitle('虛構離線旅宿｜智慧接待展示');
+  const question = reopened.getByRole('textbox', { name: '旅客問題' });
+  await question.fill('停車和早餐');
+  await question.press('Enter');
+  const reply = reopened.getByRole('log').locator('.bubble').last();
+  await expect(reply).toContainText('【停車】');
+  await expect(reply).toContainText('【早餐】');
+  expect(await reopened.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });

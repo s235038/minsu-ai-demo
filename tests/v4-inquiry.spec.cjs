@@ -1,3 +1,5 @@
+const { resolve } = require('node:path');
+const { pathToFileURL } = require('node:url');
 const { expect, test } = require('@playwright/test');
 
 const owner = page => page.getByRole('button', { name: '老闆管理區' });
@@ -192,4 +194,22 @@ test('renders HTML-like visitor input as text in the summary and operator queue'
   await latest(page).getByRole('button', { name: '查看後台' }).click();
   await expect(page.getByRole('article')).toContainText(markup);
   await expect(page.locator('[data-demo-marker]')).toHaveCount(0);
+});
+
+test('supports the operator walkthrough from a standalone HTML file', async ({ page, context }) => {
+  await context.setOffline(true);
+  await page.goto(pathToFileURL(resolve('minsu_ai_v3.html')).href);
+  await owner(page).click();
+  await page.getByText('業者試用指南', { exact: true }).click();
+  await expect(page.getByText('示範後台只在這個瀏覽器使用', { exact: false })).toBeVisible();
+  await guest(page).click();
+
+  await send(page, '想問休息方案');
+  await expect(latest(page)).toContainText('沒有即時房價');
+  await page.getByRole('button', { name: '開始示範諮詢' }).click();
+  await page.getByRole('button', { name: '使用示範日期' }).click();
+  await expect(latest(page)).toContainText('尚未訂房');
+  await latest(page).getByRole('button', { name: '送至示範後台' }).click();
+  await latest(page).getByRole('button', { name: '查看後台' }).click();
+  await expect(page.getByRole('article')).toHaveCount(1);
 });

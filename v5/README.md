@@ -1,0 +1,63 @@
+# V5 旅宿諮詢試用服務
+
+V5 使用獨立的 Node.js 24 服務與 SQLite，保留 V4 GitHub Pages 展示。這個版本可在本機驗證 LINE 事件到人工轉交的流程。LINE 傳送預設模擬，問答分類使用規則式模擬介面。
+
+## 五分鐘本機試用
+
+在終端機 A 的儲存庫根目錄執行。服務限定 127.0.0.1，不需安裝 npm 套件。
+
+```sh
+export V5_LINE_CHANNEL_SECRET=$(node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'))")
+export V5_OPERATOR_TOKEN=$(node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'))")
+export V5_PRIVACY_KEY=$(node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'))")
+export V5_LINE_REPLY_MODE=mock
+export V5_PRINT_MOCK_REPLIES=1
+node v5/start.mjs
+```
+
+1. 開啟 http://127.0.0.1:8785/operator，使用終端機 A 產生的 `V5_OPERATOR_TOKEN`。在另個獨立瀏覽器或無痕視窗登入同一工作台。
+2. 在終端機 B 設定同一個本機 `V5_LINE_CHANNEL_SECRET`，再送虛構問題。可在終端機 A 查看模擬回覆。
+   ```sh
+   node v5/send-test-event.mjs '車要停哪，有狗可以帶去嗎？' '想住下週日' '2027-02-06，２晚，2位大人' '0'
+   ```
+3. 按兩個視窗的「更新清單與指標」。第一個視窗把需求改為「處理中」，第二個刷新後確認狀態，再以虛構資料試著刪除需求。
+4. 在知識庫修改一條核可公開的停車說明，儲存後再次送出虛構停車問題。先前的 FAQ 不影響 V4 網頁。
+
+預設資料庫為 `v5/v5-demo.sqlite`。可用 `V5_DB_PATH` 選擇各次試用的檔案，或用 `V5_KNOWLEDGE_PATH` 指定初始知識庫。已在工作台儲存的知識庫優先於檔案。金鑰透過環境變數或平台祕密管理注入，試用金鑰勿重用或提交。
+
+## 介面與資料流
+
+LINE 請求須以 channel secret 簽署原始位元組。服務驗證簽章後接收一對一文字訊息，以獨立的 HMAC 遮蔽事件及使用者識別，並對相同事件去重。只將日期、晚數、成人與兒童人數等結構化摘要寫入 SQLite。操作 API 需要獨立的高熵操作金鑰，瀏覽器只在頁面記憶體保留。兩個裝置在可連到同一服務的環境可透過刷新讀寫同一資料庫。
+
+`createAssistant({knowledge, provider})` 接受實作 `classify({text, topics})` 的供應者。供應者只能選知識庫主題 ID 或建議進入入住流程。回覆由服務從核可知識渲染，住宿日期及數量使用本機驗證；模型自行撰寫的內容會被忽略。遇到空房、未確認報價、訂單或退款等要求會轉交人工。人工案件建立後，旅客會收到需求編號及核可的聯絡指引，業者用編號查對工作台。
+
+原始訊息、LINE 使用者 ID、Reply Token 與金鑰不寫入資料庫。追問狀態有效期為 24 小時，過期資料在後續處理時清理。刪除案件移除其摘要，保留不含原始識別碼的去重事件及結果計數。上線前需定義留存週期、備份刪除與稽核規則。
+
+## 驗證與指標
+
+```sh
+node --test --test-isolation=none v5/test/*.test.mjs
+node v5/evaluate.mjs
+npm ci
+npx playwright install chromium webkit
+npx playwright test --config v5/playwright.config.cjs
+```
+
+合成評估對每次回覆比對預期文字和不允許的承諾，另外驗證人工案件是否入庫、住宿摘要是否完整。工作台顯示事件、回覆結果、失敗和案件狀態計數。推估節省時間以每次直接人工回覆 90 秒、審閱 30 秒為假設，乘上測試中成功回答的 FAQ 數量。這些是合成測試結果及算例，實際正確率、完成率與省時須由業者在試用期間標註及計時。
+
+## 測試帳號與上線驗收
+
+- 實測 LINE 需一個獨立的測試官方帳號、測試 Messaging API channel secret 與 access token，以及自有 HTTPS 入口反向代理至本機服務。只把 `/webhooks/line` 公開給 LINE，工作台透過管理者專用入口存取。注入測試金鑰、設定 `V5_LINE_REPLY_MODE=line`、關閉模擬回覆列印後，在測試帳號啟用 webhook、使用 Verify，再由測試手機送出問題。此模式仍使用模擬問答。
+- 接上真正模型前須取得核准的推論資源，確認個資處理、資料保留與費用上限，加入逾時和評估，並以未公開的口語案例驗收回覆。現有程式不呼叫外部模型。
+- 真實案件上線前需要個別業者登入與角色權限、金鑰輪替、租戶隔離、備份與還原演練、資料保留與刪除驗收，並測試實體裝置與實際人工接手。目前只支援單旅宿、單實例和共享試用金鑰。
+- LINE Reply Token 為一次性。傳送逾時或結果未明時保留案件與失敗紀錄，避免自動重送。試用服務會等回覆完成再回 HTTP；正式運行須驗證延遲、監控、尖峰量、崩潰後待處理事件及人工補救，以及 LINE 官方帳號人工回覆流程。
+
+## 每月成本假設
+
+| 情境 | 估算與假設 |
+| --- | --- |
+| 本機合成演練 | 新增服務成本 NT$0，使用既有電腦、SQLite、模擬傳送與模擬問答。 |
+| 單旅宿試營運 | 主機及小型持久磁碟暫估 NT$200–600／月，未詢價。域名、異地備份與維運工時另估。 |
+| LINE 與模型 | LINE 方案及訊息用量以測試帳號所在方案確認。模型月費以輸入及輸出用量乘供應商單價，啟用前設定月額上限。未購買服務。 |
+
+收費驗收以真實試用的答覆抽查、人工轉交及諮詢完成紀錄、減少補問時間和業者願付價格為準。

@@ -1,0 +1,26 @@
+name: V5 service and browser checks
+
+on:
+  pull_request:
+    paths:
+      - 'v5/**'
+      - '.github/workflows/v5-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: node --test --test-isolation=none v5/test/*.test.mjs
+      - run: node v5/evaluate.mjs
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium webkit
+      - run: npx playwright test --config v5/playwright.config.cjs

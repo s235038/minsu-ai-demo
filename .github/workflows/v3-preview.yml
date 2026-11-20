@@ -1,0 +1,43 @@
+name: V3 automated checks and preview deploy
+on:
+  push:
+    branches: [feature/v3-smart-reception-20261120]
+  pull_request:
+    paths:
+      - 'minsu_ai_v3.html'
+      - 'tests/**'
+      - '.github/workflows/v3-preview.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node tests/v3-smoke.cjs
+  deploy-preview:
+    if: github.event_name != 'pull_request'
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          mkdir -p _site
+          cp minsu_ai_v3.html _site/index.html
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4

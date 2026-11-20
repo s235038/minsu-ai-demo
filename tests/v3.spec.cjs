@@ -108,11 +108,11 @@ test('summary validates fields, fits the viewport and stays local', async ({ pag
   await page.getByText('訂房需求整理').click();
   const generate = page.getByRole('button', { name: '產生需求摘要' });
   await generate.click();
-  await expect(messages(page).last()).toContainText('請先填寫有效日期');
+  await expect(page.locator('#request-feedback')).toHaveText('請填寫有效的入住日期。');
   await page.getByLabel('入住日期').fill('2027-02-01');
   await page.getByLabel('小孩').fill('');
   await generate.click();
-  await expect(messages(page).last()).toContainText('請先填寫有效日期');
+  await expect(page.locator('#request-feedback')).toHaveText('小孩人數須為 0 至 30 的整數。');
   await page.getByLabel('小孩').fill('0');
   await page.getByRole('textbox', { name: '房型', exact: true }).fill('四人房');
   await page.getByLabel('特殊需求').fill('虛構測試：需要車位');

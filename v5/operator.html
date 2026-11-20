@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>旅宿諮詢工作台</title>
+  <link rel="stylesheet" href="/operator.css">
+  <script type="module" src="/operator.mjs"></script>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>旅宿諮詢工作台</h1>
+      <p>測試環境使用模擬問答。操作時請使用虛構諮詢資料。</p>
+    </header>
+
+    <section id="access" class="panel access" aria-labelledby="access-title">
+      <h2 id="access-title">登入工作台</h2>
+      <form id="login">
+        <label for="operator-key">範例操作金鑰</label>
+        <div class="login-row">
+          <input id="operator-key" type="password" autocomplete="off" required>
+          <button id="sign-in" type="submit" class="primary">登入</button>
+        </div>
+      </form>
+    </section>
+
+    <p id="feedback" role="status" aria-atomic="true"></p>
+
+    <div id="workspace" hidden>
+      <div class="toolbar">
+        <span id="mode" class="mode"></span>
+        <button id="sign-out" type="button">登出</button>
+      </div>
+      <fieldset id="workspace-controls">
+        <div class="workspace-grid">
+          <section class="panel" aria-labelledby="inquiry-title">
+            <div class="section-heading">
+              <h2 id="inquiry-title" tabindex="-1">住宿諮詢</h2>
+              <button id="refresh" type="button">更新清單與指標</button>
+            </div>
+            <p id="no-inquiries">目前沒有諮詢。</p>
+            <ul id="inquiries" class="inquiries"></ul>
+          </section>
+
+          <section class="panel" aria-labelledby="metrics-title">
+            <h2 id="metrics-title">測試指標</h2>
+            <p>以下為這個環境的系統計數，答覆正確率需人工核對。</p>
+            <dl id="metrics" class="metrics"></dl>
+            <details id="failure-details" hidden>
+              <summary>失敗原因</summary>
+              <dl id="failure-reasons" class="failure-reasons"></dl>
+            </details>
+          </section>
+
+          <section class="panel knowledge" aria-labelledby="knowledge-title">
+            <h2 id="knowledge-title">旅宿知識庫</h2>
+            <p id="knowledge-help">可編輯房型、入住規則、設施和常見問題。請沿用現有 JSON 格式，僅填入核可公開的旅宿資訊。</p>
+            <form id="knowledge-form">
+              <label for="knowledge">旅宿知識庫 JSON</label>
+              <textarea id="knowledge" name="knowledge" rows="10" spellcheck="false" aria-describedby="knowledge-help" required></textarea>
+              <div class="actions">
+                <button class="primary" type="submit">儲存知識庫</button>
+                <button id="reload-knowledge" type="button">重新載入知識庫</button>
+              </div>
+            </form>
+          </section>
+        </div>
+      </fieldset>
+    </div>
+  </main>
+</body>
+</html>

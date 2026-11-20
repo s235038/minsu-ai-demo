@@ -24,3 +24,11 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium webkit
       - run: npx playwright test --config v5/playwright.config.cjs
+      - name: Upload browser failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: v5-playwright-failure
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 7

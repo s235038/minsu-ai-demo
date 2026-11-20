@@ -1,7 +1,5 @@
-name: V3 automated checks and preview deploy
+name: V3 archived browser checks
 on:
-  push:
-    branches: [fix/v3-mvp-demo]
   pull_request:
     paths:
       - 'minsu_ai_v3.html'
@@ -28,27 +26,3 @@ jobs:
         with:
           name: v3-demo
           path: minsu_ai_v3.html
-  deploy-preview:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/fix/v3-mvp-demo'
-    needs: test
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-    concurrency: github-pages
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - uses: actions/checkout@v6
-      - run: |
-          mkdir -p _site
-          cp minsu_ai_v3.html _site/
-          cp minsu_ai_v3.html _site/index.html
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: _site
-      - id: deployment
-        uses: actions/deploy-pages@v4

@@ -384,9 +384,9 @@ function missingField(record) {
 
 const questions = {
   date: "請問哪一天入住？請提供完整日期，例如 2027-02-01。",
-  nights: "預計住幾晚？例如「住 2 晚」。",
-  adults: "請問有幾位大人？例如「2 位大人」，也可以一併填寫小孩人數。",
-  children: "請問有幾位小孩？沒有的話請填「0 位小孩」。",
+  nights: "預計住幾晚？可直接回覆數字，例如「2」。",
+  adults: "請問有幾位大人？可直接回覆數字，例如「2」，也可以一併填寫小孩人數。",
+  children: "請問有幾位小孩？沒有的話可直接回覆「0」。",
 };
 
 function intakeFields(text) {
@@ -425,6 +425,12 @@ function respondToInquiry(text, hasFaq) {
     /(?:想|要|詢問|請問)(?:要)?(?:訂房|住宿)|住宿諮詢/.test(text);
   if (!intake.active && !startsInquiry) return false;
   if (hasFaq && !startsInquiry && !Object.keys(parsed).length) return true;
+
+  const pending = missingField(intake.draft);
+  const reply = text.normalize("NFKC");
+  if (intake.active && pending && pending !== "date" && /^\d+$/.test(reply)) {
+    parsed[pending] = reply;
+  }
 
   intake.active = true;
   if (validDate(parsed.date)) el("sample-date")?.remove();

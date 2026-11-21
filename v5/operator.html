@@ -55,15 +55,44 @@
 
           <section class="panel knowledge" aria-labelledby="knowledge-title">
             <h2 id="knowledge-title">旅宿知識庫</h2>
-            <p id="knowledge-help">可編輯房型、入住規則、設施和常見問題。請沿用現有 JSON 格式，僅填入核可公開的旅宿資訊。</p>
-            <form id="knowledge-form">
-              <label for="knowledge">旅宿知識庫 JSON</label>
-              <textarea id="knowledge" name="knowledge" rows="10" spellcheck="false" aria-describedby="knowledge-help" required></textarea>
-              <div class="actions">
-                <button class="primary" type="submit">儲存知識庫</button>
-                <button id="reload-knowledge" type="button">重新載入知識庫</button>
+            <p>老闆可直接修改常用館規，不必編輯程式碼。只填入館方已確認、可以公開的資訊；空房、房價和退款仍由真人確認。</p>
+            <form id="quick-knowledge-form" aria-label="常用館規快速編輯">
+              <div class="quick-fields">
+                <div>
+                  <label for="quick-checkin">入住時間</label>
+                  <input id="quick-checkin" name="checkIn" type="time" required>
+                </div>
+                <div>
+                  <label for="quick-checkout">退房時間</label>
+                  <input id="quick-checkout" name="checkOut" type="time" required>
+                </div>
+                <div class="quick-full">
+                  <label for="quick-parking">停車說明</label>
+                  <textarea id="quick-parking" name="parking" rows="2" maxlength="180" required></textarea>
+                </div>
+                <div class="quick-full">
+                  <label for="quick-pets">寵物規範</label>
+                  <textarea id="quick-pets" name="pets" rows="2" maxlength="180" required></textarea>
+                </div>
+                <div class="quick-full">
+                  <label for="quick-contact">聯絡與人工接手方式</label>
+                  <textarea id="quick-contact" name="contact" rows="2" maxlength="180" required></textarea>
+                </div>
               </div>
+              <button class="primary" type="submit">儲存常用館規</button>
             </form>
+            <details class="advanced-settings">
+              <summary>進階設定：房型、設施、額外 FAQ（JSON）</summary>
+              <p id="knowledge-help">需要新增房型或 FAQ 時再使用。請沿用原有 JSON 結構；切換或快速儲存時，未儲存的 JSON 編輯不會保留。</p>
+              <form id="knowledge-form">
+                <label for="knowledge">旅宿知識庫 JSON</label>
+                <textarea id="knowledge" name="knowledge" rows="10" spellcheck="false" aria-describedby="knowledge-help" required></textarea>
+                <div class="actions">
+                  <button class="primary" type="submit">儲存完整知識庫</button>
+                  <button id="reload-knowledge" type="button">重新載入知識庫</button>
+                </div>
+              </form>
+            </details>
           </section>
         </div>
       </fieldset>

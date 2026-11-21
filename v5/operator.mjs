@@ -8,6 +8,10 @@ const feedback = document.querySelector('#feedback');
 const inquiryList = document.querySelector('#inquiries');
 const emptyList = document.querySelector('#no-inquiries');
 const knowledgeField = document.querySelector('#knowledge');
+const quickRules = ['checkIn', 'checkOut', 'parking', 'pets', 'contact'];
+const quickRuleFields = Object.fromEntries(quickRules.map(name => [
+  name, document.querySelector(`#quick-knowledge-form [name="${name}"]`),
+]));
 const metricsList = document.querySelector('#metrics');
 const statusLabels = { new: '待確認', in_progress: '處理中', resolved: '已處理' };
 const taipeiTime = new Intl.DateTimeFormat('zh-TW', {
@@ -23,6 +27,11 @@ function announce(message, error = false) {
   feedback.dataset.error = String(error);
 }
 
+function renderKnowledge(knowledge) {
+  knowledgeField.value = JSON.stringify(knowledge, null, 2);
+  for (const name of quickRules) quickRuleFields[name].value = knowledge[name] ?? '';
+}
+
 function signOut(message, error = false) {
   session?.controller.abort();
   session = undefined;
@@ -34,6 +43,7 @@ function signOut(message, error = false) {
   keyField.value = '';
   keyField.focus();
   knowledgeField.value = '';
+  document.querySelector('#quick-knowledge-form').reset();
   inquiries = [];
   inquiryList.replaceChildren();
   metricsList.replaceChildren();
@@ -218,7 +228,7 @@ login.addEventListener('submit', event => {
     if (session === current) {
       renderInquiries(intake.inquiries);
       renderMetrics(metrics);
-      knowledgeField.value = JSON.stringify(knowledge.knowledge, null, 2);
+      renderKnowledge(knowledge.knowledge);
       access.hidden = true;
       workspace.hidden = false;
       document.querySelector('#inquiry-title').focus();
@@ -242,7 +252,7 @@ document.querySelector('#refresh').addEventListener('click', () => {
 document.querySelector('#reload-knowledge').addEventListener('click', () => {
   void run(async current => {
     const result = await api(current, '/api/knowledge');
-    if (session === current) knowledgeField.value = JSON.stringify(result.knowledge, null, 2);
+    if (session === current) renderKnowledge(result.knowledge);
     return '知識庫已重新載入。';
   });
 });
@@ -258,7 +268,24 @@ document.querySelector('#knowledge-form').addEventListener('submit', event => {
   }
   void run(async current => {
     const result = await api(current, '/api/knowledge', { method: 'PUT', body: { knowledge } });
-    if (session === current) knowledgeField.value = JSON.stringify(result.knowledge, null, 2);
+    if (session === current) renderKnowledge(result.knowledge);
     return '知識庫已儲存。';
+  });
+});
+
+
+document.querySelector('#quick-knowledge-form').addEventListener('submit', event => {
+  event.preventDefault();
+  // Fetch the latest knowledge just before saving, so unrelated FAQ/room edits
+  // from another open operator window are not overwritten by a stale snapshot.
+  const changes = Object.fromEntries(quickRules.map(name => [name, quickRuleFields[name].value.trim()]));
+  void run(async current => {
+    const latest = await api(current, '/api/knowledge');
+    const result = await api(current, '/api/knowledge', {
+      method: 'PUT',
+      body: { knowledge: { ...latest.knowledge, ...changes } },
+    });
+    if (session === current) renderKnowledge(result.knowledge);
+    return '常用館規已儲存；新諮詢將使用更新後的內容。';
   });
 });

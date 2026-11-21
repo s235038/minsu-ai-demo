@@ -36,6 +36,23 @@ test('a signed LINE test event reaches two independent operator sessions', async
     await signIn(second);
     await expect(page.getByText('目前沒有諮詢。')).toBeVisible();
 
+    // An owner can change approved house rules without touching JSON.
+    // Preserve rooms, facilities and custom FAQ when another window is open.
+    await page.getByLabel('入住時間').fill('16:00');
+    await page.getByLabel('停車說明').fill('停車請先至入口右側空地，詳細配置請洽櫃台。');
+    await page.getByRole('button', { name: '儲存常用館規' }).click();
+    await expect(page.getByRole('status')).toHaveText('常用館規已儲存；新諮詢將使用更新後的內容。');
+    const savedResponse = await fetch(origin + '/api/knowledge', {
+      headers: { Authorization: 'Bearer ' + operatorToken },
+    });
+    expect(savedResponse.status).toBe(200);
+    const saved = (await savedResponse.json()).knowledge;
+    expect(saved.checkIn).toBe('16:00');
+    expect(saved.parking).toContain('入口右側空地');
+    expect(saved.rooms).toEqual(knowledge.rooms);
+    expect(saved.faq).toEqual(knowledge.faq);
+    await expect(page.locator('#knowledge')).toHaveValue(/入口右側空地/);
+
     const raw = JSON.stringify({ events: [{
       type: 'message', webhookEventId: randomUUID(), replyToken: randomUUID(),
       source: { type: 'user', userId: randomUUID() },
@@ -47,6 +64,18 @@ test('a signed LINE test event reaches two independent operator sessions', async
     });
     expect(incoming.status).toBe(200);
     expect(replies[0]).toContain('需求編號');
+
+    const parkingRaw = JSON.stringify({ events: [{
+      type: 'message', webhookEventId: randomUUID(), replyToken: randomUUID(),
+      source: { type: 'user', userId: randomUUID() },
+      message: { type: 'text', text: '請問停車位置在哪裡？' },
+    }] });
+    const parkingSignature = createHmac('sha256', channelSecret).update(parkingRaw).digest('base64');
+    const parkingRequest = await fetch(origin + '/webhooks/line', {
+      method: 'POST', body: parkingRaw, headers: { 'X-Line-Signature': parkingSignature },
+    });
+    expect(parkingRequest.status).toBe(200);
+    expect(replies.at(-1)).toContain('入口右側空地');
 
     const refresh = tab => tab.getByRole('button', { name: '更新清單與指標' }).click();
     await refresh(page);

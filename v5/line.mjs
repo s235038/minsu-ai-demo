@@ -55,7 +55,7 @@ export function parseLineEvents(rawBody) {
     }
     if (event.source.type !== 'user' || event.message.type !== 'text') continue;
 
-    const { webhookEventId: id, replyToken, deliveryContext } = event;
+    const { webhookEventId: id, replyToken, deliveryContext, timestamp } = event;
     const { userId } = event.source;
     const { text } = event.message;
     if (!isIdentifier(id) || !isIdentifier(replyToken) || !isIdentifier(userId) || !isMessageText(text) ||
@@ -63,7 +63,9 @@ export function parseLineEvents(rawBody) {
           (!isRecord(deliveryContext) || typeof deliveryContext.isRedelivery !== 'boolean'))) {
       throw invalidWebhook();
     }
-    supportedEvents.push({ id, replyToken, userId, text, redelivered: deliveryContext?.isRedelivery ?? false });
+    if (timestamp !== undefined && (!Number.isSafeInteger(timestamp) || timestamp < 0)) throw invalidWebhook();
+    supportedEvents.push({ id, replyToken, userId, text, redelivered: deliveryContext?.isRedelivery ?? false,
+      ...(timestamp === undefined ? {} : { timestamp }) });
   }
   return supportedEvents;
 }

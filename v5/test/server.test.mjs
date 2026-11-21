@@ -188,3 +188,25 @@ test('provider failure still queues a case and uncertain Reply API delivery is n
   assert.doesNotMatch(JSON.stringify(data), /private/);
   assert.equal((await (await app.api('/api/inquiries')).json()).inquiries.length, 1);
 });
+
+
+test('signed stale or future LINE events cannot replay after dedupe retention expires', async t => {
+  const app = await fixture(t);
+  const now = Date.now();
+  const stale = app.event('停車？');
+  stale.timestamp = now - 25 * 60 * 60 * 1000;
+  assert.equal((await app.webhook([stale])).status, 400);
+  const future = app.event('停車？');
+  future.timestamp = now + 6 * 60 * 1000;
+  assert.equal((await app.webhook([future])).status, 400);
+  const malformed = app.event('停車？');
+  malformed.timestamp = 'not-a-timestamp';
+  assert.equal((await app.webhook([malformed])).status, 400);
+  assert.equal(app.replies.length, 0);
+  const recent = app.event('停車？');
+  recent.timestamp = now - 60 * 60 * 1000;
+  assert.equal((await app.webhook([recent])).status, 200);
+  assert.equal(app.replies.length, 1);
+  assert.equal((await app.webhook([recent])).status, 200);
+  assert.equal(app.replies.length, 1);
+});

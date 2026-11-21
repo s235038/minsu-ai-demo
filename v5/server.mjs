@@ -5,6 +5,9 @@ import { createAssistant, validateKnowledge } from './assistant.mjs';
 import { parseLineEvents, verifyLineSignature } from './line.mjs';
 
 const statuses = new Set(['new', 'in_progress', 'resolved']);
+// LINE may redeliver events; allow a 24-hour replay window and five minutes of clock skew.
+const MAX_EVENT_AGE_MS = 24 * 60 * 60 * 1000;
+const MAX_FUTURE_SKEW_MS = 5 * 60 * 1000;
 const assets = new Map([
   ['/operator', ['operator.html', 'text/html']],
   ['/operator.css', ['operator.css', 'text/css']],
@@ -127,6 +130,13 @@ export function createV5Server({
       events = parseLineEvents(rawBody);
     } catch {
       throw new HttpError(400, 'invalid_line_events');
+    }
+    const now = Date.now();
+    if (events.some(event =>
+      (event.timestamp === undefined && mode !== 'mock') ||
+      (event.timestamp !== undefined &&
+        (event.timestamp < now - MAX_EVENT_AGE_MS || event.timestamp > now + MAX_FUTURE_SKEW_MS)))) {
+      throw new HttpError(400, 'stale_line_event');
     }
     const results = await Promise.allSettled(events.map(enqueue));
     if (results.some(result => result.status === 'rejected')) {

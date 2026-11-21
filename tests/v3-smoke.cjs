@@ -1,1 +1,11 @@
-const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');const html=fs.readFileSync('minsu_ai_v3.html','utf8');const script=html.match(/<script>([\s\S]*?)<\/script>/);assert(script,'JavaScript block missing');new vm.Script(script[1]);for(const id of ['form','q','chat','summary','date','nights','adults','children','editor','save','reset'])assert(html.includes('id="'+id+'"'),'missing '+id);assert(html.includes('不接受實際訂房'));assert(!/fetch\s*\(|XMLHttpRequest|api[_-]?key/i.test(script[1]),'unexpected network/API reference');const data=script[1].match(/const defaults=(\[[\s\S]*?\]),key=/);assert(data,'FAQ data missing');const faq=JSON.parse(data[1]);assert(faq.length>=30);for(const f of faq){assert(f.q&&Array.isArray(f.keys)&&f.keys.length&&f.a);assert(f.keys.every(k=>typeof k==='string'&&k.length));}const match=q=>faq.filter(f=>f.q.toLowerCase()===q.toLowerCase()||f.keys.some(k=>q.toLowerCase().includes(k.toLowerCase())));assert(match('帶狗可以嗎？有停車嗎？').some(x=>x.q==='寵物'));assert(match('帶狗可以嗎？有停車嗎？').some(x=>x.q==='停車'));assert(match('入住時間').some(x=>x.q==='入住時間'));console.log('PASS: syntax, 36 FAQ, multi-topic, form elements, no API');
+const { readFileSync } = require('node:fs');
+const { Script } = require('node:vm');
+const assert = require('node:assert/strict');
+
+const html = readFileSync('minsu_ai_v3.html', 'utf8');
+const script = html.match(/<script>([\s\S]*?)<\/script>/);
+assert(script, 'JavaScript block missing');
+new Script(script[1]);
+assert(html.includes('不接受實際訂房'));
+assert(!/fetch\s*\(|XMLHttpRequest|api[_-]?key/i.test(script[1]), 'Unexpected network/API reference');
+console.log('PASS: script syntax, demo notice, no API references');

@@ -1,0 +1,10 @@
+{
+  "devDependencies": {
+    "@playwright/test": "1.65.1"
+  },
+  "name": "minsu-ai-demo",
+  "private": true,
+  "scripts": {
+    "test": "node tests/v3-smoke.cjs && playwright test"
+  }
+}

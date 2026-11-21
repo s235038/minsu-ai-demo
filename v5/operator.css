@@ -41,6 +41,12 @@ label { display: block; margin-bottom: .35rem; font-weight: 650; }
 fieldset { min-width: 0; padding: 0; margin: 0; border: 0; }
 .workspace-grid { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); }
 .knowledge { grid-column: 1 / -1; }
+.quick-fields { display: grid; gap: .8rem; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-block: 1rem; }
+.quick-full { grid-column: 1 / -1; }
+.quick-fields textarea { font-family: inherit; }
+.advanced-settings { margin-top: 1.5rem; border-top: 1px solid var(--border); padding-top: 1rem; }
+.advanced-settings summary { cursor: pointer; color: var(--accent); font-weight: 650; }
+.advanced-settings[open] > p { margin-top: .65rem; }
 
 input, select, textarea, button { font-size: 1rem; font-family: inherit; }
 input, select, textarea, button { border: 1px solid var(--border); border-radius: .45rem; min-height: 2.75rem; padding: .45rem .7rem; }
@@ -70,5 +76,5 @@ dd { margin: 0; }
 
 @media (max-width: 43rem) {
   main { padding-block: 1.15rem 2rem; }
-  .workspace-grid { grid-template-columns: minmax(0, 1fr); }
+  .workspace-grid, .quick-fields { grid-template-columns: minmax(0, 1fr); }
 }

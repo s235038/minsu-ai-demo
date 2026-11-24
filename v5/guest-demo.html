@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#123a37">
+  <title>旅客提問｜V5 本機模擬</title>
+  <link rel="stylesheet" href="/demo/guest.css">
+  <script type="module" src="/demo/guest.mjs"></script>
+</head>
+<body>
+  <main class="chat-app">
+    <header>
+      <p class="eyebrow">V5 商業試用演練</p>
+      <h1>旅客提問模擬器</h1>
+      <p>在這裡扮演旅客，再到另一個視窗查看老闆工作台。沒有連接真正的 LINE 或 AI 模型。</p>
+    </header>
+    <section class="disclaimer" aria-label="安全提醒">
+      <strong>僅供本機測試</strong>
+      <span>請只輸入虛構資料，不要填真實姓名、電話、訂單或旅客資料。關閉示範服務後，這次的測試資料會消失。</span>
+    </section>
+    <section class="chat-panel" aria-label="模擬對話">
+      <div class="chat-heading"><span class="presence" aria-hidden="true"></span><span>旅宿接待（模擬）</span><span class="model-tag">規則式示範</span></div>
+      <div id="messages" role="log" aria-live="polite" aria-relevant="additions text">
+        <p class="bubble assistant">您好！這是虛構旅宿的接待流程示範。可以詢問停車、寵物、入住時間，或提出虛構的住宿需求。</p>
+      </div>
+      <div class="examples" aria-label="快速測試問題">
+        <button type="button" data-example="車要停哪？可以帶狗狗嗎？">停車＋寵物</button>
+        <button type="button" data-example="幾點入住？何時退房？">入住退房</button>
+        <button type="button" data-example="下週日想住兩晚">多輪訂房需求</button>
+        <button type="button" data-example="可以保證有房、每晚500元嗎？">測試人工轉交</button>
+      </div>
+      <form id="composer">
+        <label for="question">輸入虛構旅客的問題</label>
+        <div class="composer-row">
+          <input id="question" name="question" type="text" maxlength="500" placeholder="例如：請問幾點入住？" required autocomplete="off">
+          <button type="submit" id="send">送出</button>
+        </div>
+      </form>
+      <p id="feedback" role="status"></p>
+    </section>
+    <p class="footer-note">這不是正式訂房網站。房況、價格、退款均需旅宿人工確認。請勿公開此本機網址或拿真實旅客資料測試。</p>
+  </main>
+</body>
+</html>

@@ -1,4 +1,4 @@
-import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { createAssistant, validateKnowledge } from './assistant.mjs';
@@ -13,6 +13,12 @@ const assets = new Map([
   ['/operator.css', ['operator.css', 'text/css']],
   ['/operator.mjs', ['operator.mjs', 'text/javascript']],
 ]);
+const demoAssets = new Map([
+  ['/demo/guest', ['guest-demo.html', 'text/html']],
+  ['/demo/guest.css', ['guest-demo.css', 'text/css']],
+  ['/demo/guest.mjs', ['guest-demo.mjs', 'text/javascript']],
+]);
+const loopbackAddresses = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
 const headers = {
   'Cache-Control': 'no-store',
   'Content-Security-Policy': "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
@@ -58,7 +64,7 @@ const digest = token => createHash('sha256').update(token).digest();
 const publicInquiry = ({ summary, ...metadata }) => ({ ...metadata, ...summary });
 
 export function createV5Server({
-  store, channelSecret, operatorToken, privacyKey, reply, provider, knowledge, mode = 'mock',
+  store, channelSecret, operatorToken, privacyKey, reply, provider, knowledge, mode = 'mock', demoGuestEnabled = false,
 }) {
   const keyPattern = /^[A-Za-z0-9_-]{32,256}$/;
   if (!channelSecret || typeof reply !== 'function' ||
@@ -67,9 +73,14 @@ export function createV5Server({
     throw new TypeError('Use separate secrets and generate operator and privacy keys of at least 32 characters');
   }
 
+  if (demoGuestEnabled && (mode !== 'mock' || provider?.kind !== 'mock')) {
+    throw new TypeError('Guest demo requires local mock delivery and mock classifier');
+  }
   const operatorHash = digest(operatorToken);
   const baseKnowledge = validateKnowledge(knowledge);
-  const assetBodies = new Map(Array.from(assets, ([path, [file, type]]) => [
+  const availableAssets = new Map(assets);
+  if (demoGuestEnabled) for (const entry of demoAssets) availableAssets.set(...entry);
+  const assetBodies = new Map(Array.from(availableAssets, ([path, [file, type]]) => [
     path, { type, body: readFileSync(new URL(file, import.meta.url)) },
   ]));
   const queues = new Map();
@@ -99,16 +110,17 @@ export function createV5Server({
       throw new Error('event_processing_failed');
     }
 
+    const text = inquiry
+      ? `${decision.reply}\n需求編號：${inquiry.id}\n${configuredKnowledge.contact}`
+      : decision.reply;
     let delivery = 'sent';
     try {
-      const text = inquiry
-        ? `${decision.reply}\n需求編號：${inquiry.id}\n${configuredKnowledge.contact}`
-        : decision.reply;
       await reply({ replyToken: event.replyToken, text });
     } catch (error) {
       delivery = error?.kind === 'rejected' ? 'rejected' : 'uncertain';
     }
     store.finishEvent(id, { outcome: decision.outcome, reason: decision.reason, delivery });
+    return { reply: text, outcome: decision.outcome, delivery };
   }
 
   function enqueue(event) {
@@ -143,6 +155,31 @@ export function createV5Server({
       throw new HttpError(503, 'event_processing_failed');
     }
     sendJson(response, 200, { received: events.length });
+  }
+
+  // This is an opt-in, loopback-only synthetic conversation tool, not a public
+  // guest API. Real LINE events still require a valid webhook signature.
+  async function handleDemoMessage(request, response) {
+    if (!demoGuestEnabled || !loopbackAddresses.has(request.socket.remoteAddress)) {
+      throw new HttpError(404, 'not_found');
+    }
+    const origin = request.headers.origin;
+    if (origin && origin !== `http://127.0.0.1:${request.socket.localPort}`) {
+      throw new HttpError(403, 'invalid_origin');
+    }
+    const body = await readJson(request);
+    if (!body || typeof body.sessionId !== 'string' ||
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.sessionId) ||
+        typeof body.text !== 'string' || body.text.trim().length < 1 ||
+        body.text.length > 500 || /[\u0000-\u001f\u007f]/u.test(body.text)) {
+      throw new HttpError(400, 'invalid_demo_message');
+    }
+    const outcome = await enqueue({
+      id: randomUUID(), userId: `demo-${body.sessionId}`,
+      replyToken: randomUUID(), text: body.text.trim(),
+    });
+    if (!outcome || outcome.delivery !== 'sent') throw new HttpError(503, 'demo_delivery_failed');
+    sendJson(response, 200, { reply: outcome.reply, outcome: outcome.outcome });
   }
 
   async function handleOperator(request, response, path) {
@@ -194,8 +231,14 @@ export function createV5Server({
       }
       const asset = assetBodies.get(path);
       if (request.method === 'GET' && asset) {
+        if (demoAssets.has(path) && !loopbackAddresses.has(request.socket.remoteAddress)) {
+          throw new HttpError(404, 'not_found');
+        }
         response.writeHead(200, { ...headers, 'Content-Type': asset.type + '; charset=utf-8' });
         return response.end(asset.body);
+      }
+      if (request.method === 'POST' && path === '/demo/message') {
+        return await handleDemoMessage(request, response);
       }
       if (request.method === 'POST' && path === '/webhooks/line') return await handleWebhook(request, response);
       if (path.startsWith('/api/')) return await handleOperator(request, response, path);

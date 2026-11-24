@@ -72,8 +72,9 @@ test('one-command localhost demo seeds a synthetic case without real LINE creden
     ['0', 'handoff'],
   ]) {
     const response = await send(question);
-    assert.equal(response.status, 200);
-    const payload = await response.json();
+    const payloadText = await response.text();
+    assert.equal(response.status, 200, `Question "${question}" failed: ${payloadText}`);
+    const payload = JSON.parse(payloadText);
     assert.equal(payload.outcome, expected);
     if (expected === 'handoff') assert.match(payload.reply, /需求編號/u);
   }

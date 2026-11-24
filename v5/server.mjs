@@ -171,7 +171,7 @@ export function createV5Server({
     if (!body || typeof body.sessionId !== 'string' ||
         !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.sessionId) ||
         typeof body.text !== 'string' || body.text.trim().length < 1 ||
-        body.text.length > 500 || /[\\u0000-\\u001f\\u007f]/u.test(body.text)) {
+        body.text.length > 500 || /[\u0000-\u001f\u007f]/u.test(body.text)) {
       throw new HttpError(400, 'invalid_demo_message');
     }
     const outcome = await enqueue({

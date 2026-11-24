@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
@@ -47,4 +48,56 @@ test('one-command localhost demo seeds a synthetic case without real LINE creden
     adults: inquiries[0].adults, children: inquiries[0].children }, {
     date: '2027-02-06', nights: 2, adults: 2, children: 0,
   });
+
+  // Guest chat is real mock API interaction, not a hard-coded front-end transcript.
+  const guestPage = await fetch(endpoint + '/demo/guest');
+  assert.equal(guestPage.status, 200);
+  assert.match(await guestPage.text(), /旅客提問模擬器/u);
+  const sessionId = randomUUID();
+  const send = async text => fetch(endpoint + '/demo/message', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Origin: endpoint },
+    body: JSON.stringify({ sessionId, text }),
+  });
+  const parking = await send('車要停哪？可以帶狗狗嗎？');
+  assert.equal(parking.status, 200);
+  const parkingData = await parking.json();
+  assert.match(parkingData.reply, /車位/u);
+  assert.match(parkingData.reply, /寵物/u);
+  for (const [question, expected] of [
+    ['我想訂房', 'clarification'],
+    ['2027-02-06', 'clarification'],
+    ['2', 'clarification'],
+    ['2', 'clarification'],
+    ['0', 'handoff'],
+  ]) {
+    const response = await send(question);
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.equal(payload.outcome, expected);
+    if (expected === 'handoff') assert.match(payload.reply, /需求編號/u);
+  }
+  const after = await fetch(endpoint + '/api/inquiries', {
+    headers: { Authorization: 'Bearer ' + token },
+  });
+  assert.equal(after.status, 200);
+  const all = (await after.json()).inquiries;
+  assert.equal(all.length, 2);
+  assert.deepEqual({
+    date: all[0].date, nights: all[0].nights, adults: all[0].adults, children: all[0].children,
+  }, { date: '2027-02-06', nights: 2, adults: 2, children: 0 });
+
+  const malformed = await fetch(endpoint + '/demo/message', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sessionId, text: '' }),
+  });
+  assert.equal(malformed.status, 400);
+  const crossSite = await fetch(endpoint + '/demo/message', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Origin: 'https://example.invalid' },
+    body: JSON.stringify({ sessionId, text: '入住時間？' }),
+  });
+  assert.equal(crossSite.status, 403);
+  assert.equal((await fetch(endpoint + '/api/inquiries')).status, 401);
 });

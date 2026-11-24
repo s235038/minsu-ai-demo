@@ -17,7 +17,7 @@ const privacyKey = key();
 const knowledge = JSON.parse(readFileSync(new URL('knowledge.demo.json', import.meta.url), 'utf8'));
 const store = createStore(':memory:');
 const server = createV5Server({
-  store, knowledge, channelSecret, operatorToken, privacyKey, mode: 'mock',
+  store, knowledge, channelSecret, operatorToken, privacyKey, mode: 'mock', demoGuestEnabled: true,
   provider: createMockProvider(),
   reply: async () => {}, // No real LINE account, network calls or message costs.
 });
@@ -53,6 +53,7 @@ try {
   console.log('這是模擬 LINE、模擬問答，不是正式 AI 或 LINE 串接。');
   console.log('僅在這部電腦的 127.0.0.1 開啟；未使用真實個資。');
   console.log('已產生一筆虛構的住宿諮詢。');
+  console.log('模擬旅客聊天室：' + endpoint + '/demo/guest');
   console.log('工作台：' + endpoint + '/operator');
   console.log('本次臨時登入金鑰：' + operatorToken);
   console.log('瀏覽器登入後可查看、更新及刪除示範案件。關閉終端機即結束試用且資料消失。');
